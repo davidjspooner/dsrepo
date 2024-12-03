@@ -9,7 +9,7 @@ import (
 
 	"github.com/davidjspooner/dshttp/pkg/httphandler"
 	"github.com/davidjspooner/dshttp/pkg/logevent"
-	dsmiddleware "github.com/davidjspooner/dshttp/pkg/middleware"
+	"github.com/davidjspooner/dshttp/pkg/middleware"
 	"github.com/davidjspooner/dsrepo/internal/repository"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -76,11 +76,11 @@ func (g *Group) initServers() error {
 		}
 
 		pipeline := httphandler.MiddlewarePipeline{
-			&dsmiddleware.Observer{
-				BeforeRequest: func(ctx context.Context, req *http.Request, observed *dsmiddleware.Observation) {
+			&middleware.Observer{
+				BeforeRequest: func(ctx context.Context, req *http.Request, observed *middleware.Observation) {
 					inflightRequests.WithLabelValues(listener.Name, req.Method).Inc()
 				},
-				AfterRequest: func(ctx context.Context, req *http.Request, observed *dsmiddleware.Observation) {
+				AfterRequest: func(ctx context.Context, req *http.Request, observed *middleware.Observation) {
 					duration := observed.Response.Duration.Seconds()
 					args := []any{
 						slog.Group("req",
@@ -96,14 +96,21 @@ func (g *Group) initServers() error {
 							slog.String("duration", fmt.Sprintf("%.3f", duration)),
 						),
 					}
+					if len(observed.Attr) > 0 {
+						var other []any
+						for _, attr := range observed.Attr {
+							other = append(other, attr.Key)
+						}
+						args = append(args, slog.Group("other", other...))
+					}
 					g.log.Info("handled", args...)
 					inflightRequests.WithLabelValues(listener.Name, req.Method).Dec()
 					requestDuration.WithLabelValues(listener.Name, req.Method).Observe(duration)
 					bytesWritten.WithLabelValues(listener.Name, req.Method).Add(float64(observed.Response.Body.Length))
 				},
 			},
-			&dsmiddleware.Recovery{},
-			&dsmiddleware.HeadMethodHelper{},
+			&middleware.Recovery{},
+			&middleware.HeadMethodHelper{},
 		}
 
 		server := &server{
