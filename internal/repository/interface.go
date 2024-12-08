@@ -9,7 +9,7 @@ import (
 )
 
 type Factory interface {
-	ConfigureRepo(config *Config, mux *httphandler.ServeMux) error
+	ConfigureRepo(config *Config, mux httphandler.Mux) error
 }
 
 var factories = make(map[string]Factory)
@@ -18,7 +18,7 @@ func RegisterFactory(rType string, factory Factory) {
 	factories[rType] = factory
 }
 
-func ConfigureRepo(config *Config, mux *httphandler.ServeMux) error {
+func ConfigureRepo(config *Config, mux httphandler.Mux) error {
 	factory, ok := factories[config.Type]
 	if !ok {
 		types := maps.Keys(factories)

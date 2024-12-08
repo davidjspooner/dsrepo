@@ -20,7 +20,7 @@ func main() {
 	loghandler := logevent.NewHandler(&slog.HandlerOptions{})
 	log := slog.New(loghandler)
 
-	server, err := forest.NewServerGroup(
+	server, err := forest.NewServer(
 		forest.WithLogger(log),
 		forest.WithConfigFile(*configPath),
 	)

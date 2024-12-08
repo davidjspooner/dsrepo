@@ -6,7 +6,7 @@ type nullWriter struct {
 	responseWriter http.ResponseWriter
 }
 
-func (nw *nullWriter) Write(p []byte) (n int, err error) {
+func (nw *nullWriter) Write(p []byte) (_ int, _ error) {
 	return len(p), nil
 }
 

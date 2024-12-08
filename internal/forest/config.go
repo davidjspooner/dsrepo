@@ -8,20 +8,18 @@ import (
 )
 
 type ListenerConfig struct {
-	Name     string
 	Port     int
 	CertFile string
 	KeyFile  string
-	Expose   []string
 }
 
 type Config struct {
-	Listeners    []*ListenerConfig
+	Listener     ListenerConfig
 	Repositories []*repository.Config
 }
 
 func WithConfigFile(path string) Option {
-	return func(s *Group) error {
+	return func(s *Server) error {
 		f, err := os.Open(path)
 		if err != nil {
 			return err

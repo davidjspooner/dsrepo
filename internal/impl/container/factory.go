@@ -6,7 +6,7 @@ import (
 )
 
 type Factory struct {
-	lastMux *httphandler.ServeMux
+	lastMux httphandler.Mux
 
 	v2BlobHandler     *v2BlobHandler
 	v2CatalogHandler  *v2CatalogHandler
@@ -35,7 +35,7 @@ DELETE /v2/<name>/manifests/<reference>
 GET /v2/<name>/tags/list
 */
 
-func (f *Factory) ConfigureRepo(config *repository.Config, mux *httphandler.ServeMux) error {
+func (f *Factory) ConfigureRepo(config *repository.Config, mux httphandler.Mux) error {
 	if f.v2BlobHandler == nil {
 		f.v2BlobHandler = &v2BlobHandler{factory: f}
 		f.v2CatalogHandler = &v2CatalogHandler{factory: f}

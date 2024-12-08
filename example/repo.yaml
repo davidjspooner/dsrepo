@@ -1,0 +1,58 @@
+listener:
+  port: 443
+  certfile: /home/david/.acme.sh/dstower.home.dolbyn.com_ecc/fullchain.cer
+  keyfile: /home/david/.acme.sh/dstower.home.dolbyn.com_ecc/dstower.home.dolbyn.com.key
+  repositories:
+    - local-docker
+    - pullthrough-docker
+    - local-tf
+
+repositories:
+  - name: local-docker
+    type: container
+    namespace:
+      - "davidjspooner/*"
+  - name: pullthrough-docker
+    type: container
+    local: 
+      path: s3://homelab_atom_repo/my_containers/
+      api: http://192.168.3.24:19000/
+    upstream: 
+      url: https://registry-1.docker.io
+    namespace:
+      - "*"
+      - "*/*"
+  - name: local-tf
+    type: tfprovider
+    local: 
+      path: s3://homelab_atom_repo/my_tfproviders/
+      api: http://192.168.3.24:19000/
+    namespace:
+      - "davidjspooner/*"
+
+roles:
+  - name: guest
+    policies:
+      - pull-any
+  - name: admin-davidjspooner
+    policies:
+      - pull-any
+      - push-davidjspooner
+
+policies:
+  - name: pull-any
+    actions:
+      - container:pull
+      - tfprovider:pull
+    resources:
+      - local-docker:**
+      - local-tfprovider:**
+      - pullthrough-docker:**
+      
+  - name: push-davidjspooner
+    actions:
+      - container:push
+      - tfprovider:push
+    resources:
+      - "local-docker:davidjspooner/*"
+      - "local-tfprovider:davidjspooner/*"
