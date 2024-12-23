@@ -5,12 +5,12 @@ import "github.com/davidjspooner/dsrepo/internal/access"
 type UserAlias string
 
 type Config struct {
-	Name       string   `yaml:"name"`
-	Type       string   `yaml:"type"`
-	Namespaces []string `yaml:"namespaces"`
-	Local      struct {
-		Path string `yaml:"path"`
-		API  string `yaml:"api"`
+	Name  string   `yaml:"name"`
+	Type  string   `yaml:"type"`
+	Items []string `yaml:"items"`
+	Local struct {
+		Path      string            `yaml:"path"`
+		Arguments map[string]string `yaml:"args"`
 	} `yaml:"local"`
 	Upstream struct {
 		Url        string    `yaml:"url"`

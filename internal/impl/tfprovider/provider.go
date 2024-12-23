@@ -1,7 +1,5 @@
 package tfprovider
 
-import "time"
-
 type Platform struct {
 	OS   string
 	Arch string
@@ -13,10 +11,16 @@ type Version struct {
 	Platforms []Platform
 }
 
-// Catalog represents a Terraform provider catalog.
 type Provider struct {
 	Namespace string
-	Name      string
-	Since     time.Time
+	Provider  string
 	Versions  []Version
+}
+
+type key struct {
+	Namespace string
+	Provider  string
+	Version   string
+	OS        string
+	Arch      string
 }

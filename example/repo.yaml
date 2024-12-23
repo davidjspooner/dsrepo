@@ -19,7 +19,7 @@ repositories:
       api: http://192.168.3.24:19000/
     upstream: 
       url: https://registry-1.docker.io
-    namespace:
+    items:
       - "*"
       - "*/*"
   - name: local-tf
@@ -27,7 +27,7 @@ repositories:
     local: 
       path: s3://homelab_atom_repo/my_tfproviders/
       api: http://192.168.3.24:19000/
-    namespace:
+    items:
       - "davidjspooner/*"
 
 roles:

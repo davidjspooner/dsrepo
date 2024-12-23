@@ -1,12 +1,14 @@
 package container
 
 import (
-	"github.com/davidjspooner/dshttp/pkg/httphandler"
+	"context"
+
+	"github.com/davidjspooner/dshttp/pkg/mux"
 	"github.com/davidjspooner/dsrepo/internal/repository"
 )
 
 type Factory struct {
-	lastMux httphandler.Mux
+	lastMux mux.Mux
 
 	v2BlobHandler     *v2BlobHandler
 	v2CatalogHandler  *v2CatalogHandler
@@ -35,7 +37,7 @@ DELETE /v2/<name>/manifests/<reference>
 GET /v2/<name>/tags/list
 */
 
-func (f *Factory) ConfigureRepo(config *repository.Config, mux httphandler.Mux) error {
+func (f *Factory) ConfigureRepo(ctc context.Context, config *repository.Config, mux mux.Mux) error {
 	if f.v2BlobHandler == nil {
 		f.v2BlobHandler = &v2BlobHandler{factory: f}
 		f.v2CatalogHandler = &v2CatalogHandler{factory: f}

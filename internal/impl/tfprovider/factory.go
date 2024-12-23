@@ -1,41 +1,82 @@
 package tfprovider
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
-	"time"
 
-	"github.com/davidjspooner/dshttp/pkg/httphandler"
+	"github.com/davidjspooner/dshttp/pkg/matcher"
+	"github.com/davidjspooner/dshttp/pkg/mux"
 	"github.com/davidjspooner/dsrepo/internal/repository"
 )
 
 type Factory struct {
-	lastMux httphandler.Mux
-	cache   *repository.Cache[Provider]
+	repos matcher.Tree[*Repo]
 }
 
 func init() {
-	repository.RegisterFactory("tfprovider", &Factory{
-		cache: repository.NewCacheMap[Provider](100),
-	})
+	repository.RegisterFactory("tfprovider", &Factory{})
 }
 
-func (f *Factory) ConfigureRepo(config *repository.Config, mux httphandler.Mux) error {
-	if f.lastMux != mux {
-		f.lastMux = mux
+func (f *Factory) ConfigureRepo(ctx context.Context, config *repository.Config, mux mux.Mux) error {
+	if f.repos.Empty() {
 
 		mux.HandleFunc("/.well-known/terraform.json", func(w http.ResponseWriter, r *http.Request) {
-			//TODO: check permissions
 			w.Header().Set("Content-Type", "application/json")
 			w.Write([]byte(`{"providers.v1":"/tf/providers/v1/"}`))
 		})
 		mux.HandleFunc("/tf/providers/v1/{namespace}/{provider}/versions", func(w http.ResponseWriter, r *http.Request) {
-			//TODO: check permissions
-			namespace := r.PathValue("namespace")
-			provider := r.PathValue("provider")
-			slog.Info("provider-versions", slog.String("namespace", namespace), slog.String("provider", provider))
-			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{
+			var key key
+			key.Namespace = r.PathValue("namespace")
+			key.Provider = r.PathValue("provider")
+			f.HandleProviderVersions(&key, w, r)
+		})
+
+		mux.HandleFunc("GET /tf/providers/v1/{namespace}/{provider}/{version}/download/{os}/{arch}", func(w http.ResponseWriter, r *http.Request) {
+			var key key
+			key.Namespace = r.PathValue("namespace")
+			key.Provider = r.PathValue("provider")
+			key.Version = r.PathValue("version")
+			key.OS = r.PathValue("os")
+			key.Arch = r.PathValue("arch")
+			f.HandleProviderDownload(&key, w, r)
+		})
+		mux.HandleFunc("PUT /tf/providers/v1/{namespace}/{provider}/{version}/download/{os}/{arch}", func(w http.ResponseWriter, r *http.Request) {
+			var key key
+			key.Namespace = r.PathValue("namespace")
+			key.Provider = r.PathValue("provider")
+			key.Version = r.PathValue("version")
+			key.OS = r.PathValue("os")
+			key.Arch = r.PathValue("arch")
+			f.HandleProviderUpload(&key, w, r)
+		})
+		mux.HandleFunc("DELETE /tf/providers/v1/{namespace}/{provider}/{version}/download/{os}/{arch}", func(w http.ResponseWriter, r *http.Request) {
+			var key key
+			key.Namespace = r.PathValue("namespace")
+			key.Provider = r.PathValue("provider")
+			key.Version = r.PathValue("version")
+			key.OS = r.PathValue("os")
+			key.Arch = r.PathValue("arch")
+			f.HandleProviderDelete(&key, w, r)
+		})
+
+	}
+
+	repo, err := newRepo(ctx, config)
+	if err != nil {
+		return err
+	}
+	_ = repo //todo parse items list into the tree
+
+	return nil
+}
+
+func (repo *Repo) HandleProviderVersions(key *key, w http.ResponseWriter, r *http.Request) {
+
+	//TODO: check permissions
+	slog.Info("provider-versions", slog.String("namespace", key.Namespace), slog.String("provider", key.Provider))
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{
 	  "versions": [
 		{
 		  "version": "2.0.0",
@@ -59,54 +100,22 @@ func (f *Factory) ConfigureRepo(config *repository.Config, mux httphandler.Mux) 
 		}
 	  ]
 	}`))
-		})
-
-		mux.HandleFunc("/tf/providers/v1/{namespace}/{provider}/{version}/download/{os}/{arch}", func(w http.ResponseWriter, r *http.Request) {
-			namespace := r.PathValue("namespace")
-			name := r.PathValue("provider")
-			version := r.PathValue("version")
-			os := r.PathValue("os")
-			arch := r.PathValue("arch")
-			key := namespace + "/" + name
-
-			switch r.Method {
-			case "GET":
-				slog.Info("provider-download", slog.String("namespace", namespace), slog.String("name", name), slog.String("version", version), slog.String("os", os), slog.String("arch", arch))
-				//TODO: check permissions
-				f.cache.Use(key, func(key string, cached *Provider, age time.Duration) (*Provider, bool) {
-					//TODO: return the actual binary
-					return nil, true
-				})
-
-				w.Header().Set("Content-Type", "application/octet-stream")
-				w.Write([]byte("fake-binary"))
-			case "DELETE":
-				slog.Info("provider-delete", slog.String("namespace", namespace), slog.String("name", name), slog.String("version", version), slog.String("os", os), slog.String("arch", arch))
-				//TODO: check permissions
-
-				f.cache.Use(key, func(key string, cached *Provider, age time.Duration) (*Provider, bool) {
-					//TODO: delete the binary
-					return nil, true
-				})
-				w.WriteHeader(http.StatusNoContent)
-			case "PUT":
-				slog.Info("provider-upload", slog.String("namespace", namespace), slog.String("name", name), slog.String("version", version), slog.String("os", os), slog.String("arch", arch))
-				//TODO: check permissions
-				f.cache.Use(key, func(key string, cached *Provider, age time.Duration) (*Provider, bool) {
-					//todo: save the binary
-					return nil, true
-				})
-
-				w.WriteHeader(http.StatusNoContent)
-			default:
-				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			}
-		})
-
-	}
-	//todo use config to create a a repo
-
-	return nil
 }
 
-var MaxCacheAge = 2 * time.Minute
+func (f *Factory) HandleProviderVersions(key *key, w http.ResponseWriter, r *http.Request) {
+	slog.Info("provider-versions", slog.String("namespace", key.Namespace), slog.String("name", key.Provider))
+}
+
+func (f *Factory) HandleProviderDownload(key *key, w http.ResponseWriter, r *http.Request) {
+	slog.Info("provider-download", slog.String("namespace", key.Namespace), slog.String("name", key.Provider), slog.String("version", key.Version), slog.String("os", key.OS), slog.String("arch", key.Arch))
+}
+
+func (f *Factory) HandleProviderUpload(key *key, w http.ResponseWriter, r *http.Request) {
+	slog.Info("provider-upload", slog.String("namespace", key.Namespace), slog.String("name", key.Provider), slog.String("version", key.Version), slog.String("os", key.OS), slog.String("arch", key.Arch))
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (f *Factory) HandleProviderDelete(key *key, w http.ResponseWriter, r *http.Request) {
+	slog.Info("provider-delete", slog.String("namespace", key.Namespace), slog.String("name", key.Provider), slog.String("version", key.Version), slog.String("os", key.OS), slog.String("arch", key.Arch))
+	w.WriteHeader(http.StatusNoContent)
+}

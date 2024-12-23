@@ -12,6 +12,7 @@ import (
 	"github.com/davidjspooner/dshttp/pkg/httphandler"
 	"github.com/davidjspooner/dshttp/pkg/logevent"
 	"github.com/davidjspooner/dshttp/pkg/middleware"
+	"github.com/davidjspooner/dshttp/pkg/mux"
 	"github.com/davidjspooner/dsrepo/internal/repository"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -41,7 +42,7 @@ type Server struct {
 	config Config
 	ctx    context.Context
 	log    *slog.Logger
-	mux    *httphandler.ServeMux
+	mux    *mux.ServeMux
 }
 
 type Option func(*Server) error
@@ -113,7 +114,7 @@ func (server *Server) initServers() error {
 		&middleware.HeadMethodHelper{},
 	}
 
-	server.mux = httphandler.NewServeMux()
+	server.mux = mux.NewServeMux()
 
 	swp := server.mux.WithPipeline(pipeline)
 
@@ -122,7 +123,7 @@ func (server *Server) initServers() error {
 		w.WriteHeader(http.StatusOK)
 	}))
 	for _, repoConfig := range server.config.Repositories {
-		err := repository.ConfigureRepo(repoConfig, swp)
+		err := repository.ConfigureRepo(server.ctx, repoConfig, swp)
 		if err != nil {
 			return err
 		}
