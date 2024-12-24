@@ -16,30 +16,29 @@ func NewGlob(path []byte, seperator byte) (matcher.Sequence, error) {
 		switch path[i] {
 		case '*':
 			if i > base {
-				matchers = append(matchers, &matcher.Text{Pattern: path[base:i], Seperator: seperator})
+				tm := &matcher.Pattern{Text: path[base:i]}
+				matchers = append(matchers, tm)
 				base = i
 			}
 			if i+1 < len(path) && path[i+1] == '*' {
 				if i+2 < len(path) && path[i+2] != seperator {
 					return nil, fmt.Errorf("invalid glob %q", path)
 				}
-				matchers = append(matchers, &matcher.PathParts{Seperator: seperator, Min: 0, Max: MaxGlobParts})
+				tm := &matcher.PathParts{Seperator: seperator, Min: 0, Max: MaxGlobParts}
+				matchers = append(matchers, tm)
 				i++
 				base = i + 1
 			}
 		case '?':
 			if i > base {
-				matchers = append(matchers, &matcher.Text{Pattern: path[base:i], Seperator: seperator})
+				tm := &matcher.Pattern{Text: path[base:i]}
+				matchers = append(matchers, tm)
 				base = i
 			}
 		default:
 		}
 		i++
 	}
-	if base < len(path) {
-		matchers = append(matchers, &matcher.Text{Pattern: path[base:], Seperator: seperator})
-	}
-	matchers = append(matchers, &matcher.EndOfText{})
-
+	matchers = append(matchers, &matcher.Pattern{Text: path[base:], EndOfText: true})
 	return matchers, nil
 }

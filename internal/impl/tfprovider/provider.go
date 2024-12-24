@@ -17,10 +17,3 @@ type Provider struct {
 	Versions  []Version
 }
 
-type key struct {
-	Namespace string
-	Provider  string
-	Version   string
-	OS        string
-	Arch      string
-}

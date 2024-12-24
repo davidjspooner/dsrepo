@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/davidjspooner/dshttp/pkg/httphandler"
@@ -89,7 +88,8 @@ func (server *Server) initServers() error {
 			return err
 		}
 	}
-	server.mux.WriteDebug(os.Stdout, 0)
+	// dump the mux tree to the log
+	// server.mux.WriteDebug(os.Stdout, 0)
 
 	return nil
 }
@@ -98,6 +98,7 @@ func (server *Server) ListenAndServe() error {
 
 	pipeline := httphandler.MiddlewarePipeline{
 		&middleware.Observer{
+			Logger: server.log,
 			BeforeRequest: func(ctx context.Context, req *http.Request, observed *httphandler.Observation) {
 				inflightRequests.WithLabelValues(req.Method).Inc()
 			},
@@ -110,8 +111,8 @@ func (server *Server) ListenAndServe() error {
 					sd = fmt.Sprintf("%.3f", duration)
 				}
 				args := []any{
+					slog.Uint64("request_id", observed.Request.ID),
 					slog.Group("req",
-						slog.Uint64("id", observed.Request.ID),
 						slog.String("method", req.Method),
 						slog.String("path", req.URL.Path),
 						slog.Int("bytes", observed.Request.Body.Length),
@@ -122,13 +123,6 @@ func (server *Server) ListenAndServe() error {
 						slog.Int("bytes", observed.Response.Body.Length),
 						slog.String("duration", sd),
 					),
-				}
-				if len(observed.Attr) > 0 {
-					var other []any
-					for _, attr := range observed.Attr {
-						other = append(other, attr.Key)
-					}
-					args = append(args, slog.Group("other", other...))
 				}
 				server.log.Info("handled", args...)
 				inflightRequests.WithLabelValues(req.Method).Dec()
