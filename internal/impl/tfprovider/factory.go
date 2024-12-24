@@ -2,11 +2,12 @@ package tfprovider
 
 import (
 	"context"
+	"io"
 	"log/slog"
 	"net/http"
 
-	"github.com/davidjspooner/dshttp/pkg/matcher"
 	"github.com/davidjspooner/dshttp/pkg/mux"
+	"github.com/davidjspooner/dsmatch/pkg/matcher"
 	"github.com/davidjspooner/dsrepo/internal/repository"
 )
 
@@ -41,7 +42,7 @@ func (f *Factory) ConfigureRepo(ctx context.Context, config *repository.Config, 
 			key.Arch = r.PathValue("arch")
 			f.HandleProviderDownload(&key, w, r)
 		})
-		mux.HandleFunc("PUT /tf/providers/v1/{namespace}/{provider}/{version}/download/{os}/{arch}", func(w http.ResponseWriter, r *http.Request) {
+		mux.HandleFunc("PUT /tf/providers/v1/{namespace}/{provider}/{version}/upload/{os}/{arch}", func(w http.ResponseWriter, r *http.Request) {
 			var key key
 			key.Namespace = r.PathValue("namespace")
 			key.Provider = r.PathValue("provider")
@@ -50,7 +51,7 @@ func (f *Factory) ConfigureRepo(ctx context.Context, config *repository.Config, 
 			key.Arch = r.PathValue("arch")
 			f.HandleProviderUpload(&key, w, r)
 		})
-		mux.HandleFunc("DELETE /tf/providers/v1/{namespace}/{provider}/{version}/download/{os}/{arch}", func(w http.ResponseWriter, r *http.Request) {
+		mux.HandleFunc("DELETE /tf/providers/v1/{namespace}/{provider}/{version}/upload/{os}/{arch}", func(w http.ResponseWriter, r *http.Request) {
 			var key key
 			key.Namespace = r.PathValue("namespace")
 			key.Provider = r.PathValue("provider")
@@ -112,6 +113,8 @@ func (f *Factory) HandleProviderDownload(key *key, w http.ResponseWriter, r *htt
 
 func (f *Factory) HandleProviderUpload(key *key, w http.ResponseWriter, r *http.Request) {
 	slog.Info("provider-upload", slog.String("namespace", key.Namespace), slog.String("name", key.Provider), slog.String("version", key.Version), slog.String("os", key.OS), slog.String("arch", key.Arch))
+	defer r.Body.Close()
+	io.Copy(io.Discard, r.Body)
 	w.WriteHeader(http.StatusNoContent)
 }
 

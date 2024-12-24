@@ -10,6 +10,9 @@ import (
 
 	_ "github.com/davidjspooner/dsrepo/internal/impl/container"
 	_ "github.com/davidjspooner/dsrepo/internal/impl/tfprovider"
+
+	_ "github.com/davidjspooner/dsfile/pkg/impl/localfs"
+	_ "github.com/davidjspooner/dsfile/pkg/impl/s3fs"
 )
 
 func main() {

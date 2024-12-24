@@ -3,7 +3,7 @@ package repository
 import (
 	"fmt"
 
-	"github.com/davidjspooner/dshttp/pkg/matcher"
+	"github.com/davidjspooner/dsmatch/pkg/matcher"
 )
 
 var MaxGlobParts = 100

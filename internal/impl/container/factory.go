@@ -47,13 +47,13 @@ func (f *Factory) ConfigureRepo(ctc context.Context, config *repository.Config, 
 	}
 	if f.lastMux != mux {
 		f.lastMux = mux
-		mux.HandleFunc("GET /v2/", f.v2RootHandler.get)
+		mux.HandleFunc("GET /v2/$", f.v2RootHandler.get)
 		mux.HandleFunc("GET /v2/_catalog", f.v2CatalogHandler.get)
 		mux.HandleFunc("GET /v2/{name...}/blobs/{digest}", f.v2BlobHandler.get)
-		mux.HandleFunc("POST /v2/{name...}/blobs/uploads/", f.v2BlobHandler.post)
+		mux.HandleFunc("POST /v2/{name...}/blobs/uploads/$", f.v2BlobHandler.post)
 		mux.HandleFunc("PATCH /v2/{name...}/blobs/uploads/{reference}", f.v2BlobHandler.patch)
 		mux.HandleFunc("PUT /v2/{name...}/blobs/uploads/{reference}", f.v2BlobHandler.put)
-		mux.HandleFunc("DELETE /v2/{name...}/blobs/", f.v2BlobHandler.delete)
+		mux.HandleFunc("DELETE /v2/{name...}/blobs/$", f.v2BlobHandler.delete)
 		mux.HandleFunc("GET /v2/{name...}/manifests/{reference}", f.v2ManifestHandler.get)
 		mux.HandleFunc("PUT /v2/{name...}/manifests/{reference}", f.v2ManifestHandler.put)
 		mux.HandleFunc("DELETE /v2/{name...}/manifests/{reference}", f.v2ManifestHandler.delete)

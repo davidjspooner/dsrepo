@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/davidjspooner/dshttp/pkg/httphandler"
@@ -76,6 +77,25 @@ func WithLogger(log *slog.Logger) Option {
 
 func (server *Server) initServers() error {
 
+	server.mux = mux.NewServeMux()
+
+	server.mux.Handle("GET /metrics", promhttp.Handler())
+	server.mux.Handle("GET /health", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	for _, repoConfig := range server.config.Repositories {
+		err := repository.ConfigureRepo(server.ctx, repoConfig, server.mux)
+		if err != nil {
+			return err
+		}
+	}
+	server.mux.WriteDebug(os.Stdout, 0)
+
+	return nil
+}
+
+func (server *Server) ListenAndServe() error {
+
 	pipeline := httphandler.MiddlewarePipeline{
 		&middleware.Observer{
 			BeforeRequest: func(ctx context.Context, req *http.Request, observed *httphandler.Observation) {
@@ -83,6 +103,12 @@ func (server *Server) initServers() error {
 			},
 			AfterRequest: func(ctx context.Context, req *http.Request, observed *httphandler.Observation) {
 				duration := observed.Response.Duration.Seconds()
+				sd := ""
+				if duration < 0.001 {
+					sd = fmt.Sprintf("%.6f", duration)
+				} else {
+					sd = fmt.Sprintf("%.3f", duration)
+				}
 				args := []any{
 					slog.Group("req",
 						slog.Uint64("id", observed.Request.ID),
@@ -94,7 +120,7 @@ func (server *Server) initServers() error {
 					slog.Group("res",
 						slog.Int("status", observed.Response.Status),
 						slog.Int("bytes", observed.Response.Body.Length),
-						slog.String("duration", fmt.Sprintf("%.3f", duration)),
+						slog.String("duration", sd),
 					),
 				}
 				if len(observed.Attr) > 0 {
@@ -114,24 +140,6 @@ func (server *Server) initServers() error {
 		&middleware.HeadMethodHelper{},
 	}
 
-	server.mux = mux.NewServeMux()
-
-	swp := server.mux.WithPipeline(pipeline)
-
-	swp.Handle("GET /metrics", promhttp.Handler())
-	swp.Handle("GET /health", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-	for _, repoConfig := range server.config.Repositories {
-		err := repository.ConfigureRepo(server.ctx, repoConfig, swp)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (server *Server) ListenAndServe() error {
 	addr := fmt.Sprintf(":%d", server.config.Listener.Port)
 
 	if server.config.Listener.CertFile == "" {
@@ -155,7 +163,7 @@ func (server *Server) ListenAndServe() error {
 		addr,
 		server.config.Listener.CertFile,
 		server.config.Listener.KeyFile,
-		server.mux,
+		pipeline.WrapHandler(server.mux),
 	)
 	return err
 }

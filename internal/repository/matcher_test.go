@@ -3,7 +3,7 @@ package repository
 import (
 	"testing"
 
-	"github.com/davidjspooner/dshttp/pkg/matcher"
+	"github.com/davidjspooner/dsmatch/pkg/matcher"
 )
 
 func TestNewGlob(t *testing.T) {
