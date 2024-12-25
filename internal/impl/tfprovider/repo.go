@@ -41,7 +41,7 @@ func (repo *Repo) HandleProviderVersions(parsed *parsedRequest, w http.ResponseW
 	w.Write([]byte(`{
 	  "versions": [
 		{
-		  "version": "2.0.0",
+		  "version": "0.2.0",
 		  "protocols": ["4.0", "5.1"],
 		  "platforms": [
 			{"os": "darwin", "arch": "amd64"},
@@ -51,8 +51,8 @@ func (repo *Repo) HandleProviderVersions(parsed *parsedRequest, w http.ResponseW
 		  ]
 		},
 		{
-		  "version": "2.0.1",
-		  "protocols": ["5.2"],
+		  "version": "0.2.1",
+		  "protocols": ["6.0"],
 		  "platforms": [
 			{"os": "darwin", "arch": "amd64"},
 			{"os": "linux", "arch": "amd64"},

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/davidjspooner/dshttp/pkg/httphandler"
@@ -88,8 +89,8 @@ func (server *Server) initServers() error {
 			return err
 		}
 	}
-	// dump the mux tree to the log
-	// server.mux.WriteDebug(os.Stdout, 0)
+	//dump the mux tree to the log
+	server.mux.WriteDebug(os.Stdout, 0)
 
 	return nil
 }

@@ -39,11 +39,11 @@ func (f *Factory) lookupRepo(w http.ResponseWriter, parsed *parsedRequest, opera
 func (f *Factory) ConfigureRepo(ctx context.Context, config *repository.Config, mux mux.Mux) error {
 	if f.repos.Empty() {
 
-		mux.HandleFunc("/.well-known/terraform.json", func(w http.ResponseWriter, r *http.Request) {
+		mux.HandleFunc("GET /.well-known/terraform.json", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.Write([]byte(`{"providers.v1":"/tf/providers/v1/"}`))
 		})
-		mux.HandleFunc("/tf/providers/v1/{namespace}/{provider}/versions", func(w http.ResponseWriter, r *http.Request) {
+		mux.HandleFunc("GET /tf/providers/v1/{namespace}/{provider}/versions", func(w http.ResponseWriter, r *http.Request) {
 			parsed := NewParsedRequest(r)
 			repo := f.lookupRepo(w, parsed, "tfprovider:pull")
 			if repo == nil {
@@ -80,7 +80,6 @@ func (f *Factory) ConfigureRepo(ctx context.Context, config *repository.Config, 
 			parsed.ParseVersionOSArch(r)
 			repo.HandleProviderDelete(parsed, w, r)
 		})
-
 	}
 
 	repo, err := newRepo(ctx, config)
