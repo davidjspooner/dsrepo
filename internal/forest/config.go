@@ -27,6 +27,7 @@ func WithConfigFile(path string) Option {
 		defer f.Close()
 
 		d := yaml.NewDecoder(f)
+		d.KnownFields(true)
 		err = d.Decode(&s.config)
 		return err
 	}

@@ -84,11 +84,11 @@ func (f *Factory) ConfigureRepo(ctx context.Context, config *repository.Config, 
 	}
 
 	repo, err := newRepo(ctx, config)
-	f.count++
-	repo.order = f.count
 	if err != nil {
 		return err
 	}
+	f.count++
+	repo.order = f.count
 	for _, item := range config.Items {
 		seq, err := repository.NewGlob([]byte(item), '/')
 		if err != nil {

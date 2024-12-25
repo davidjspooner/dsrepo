@@ -3,8 +3,12 @@ package tfprovider
 import (
 	"bytes"
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"io"
+	"log/slog"
 	"net/http"
+	"path"
 	"strconv"
 
 	"github.com/davidjspooner/dsfile/pkg/store"
@@ -61,13 +65,21 @@ func (repo *Repo) HandleProviderVersions(parsed *parsedRequest, w http.ResponseW
 }
 
 func (repo *Repo) HandleProviderDownload(parsed *parsedRequest, w http.ResponseWriter, r *http.Request) {
+	target := path.Join(parsed.Namespace, parsed.Provider, parsed.Version, parsed.OS, parsed.Arch, "executable")
+	rFile, err := repo.local.Open(target)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	defer rFile.Close()
+	w.WriteHeader(http.StatusOK)
+	io.Copy(w, rFile)
 }
 
 func (repo *Repo) HandleProviderUpload(parsed *parsedRequest, w http.ResponseWriter, r *http.Request) {
 	//obs.Logger.Info("provider-upload", slog.String("namespace", key.Namespace), slog.String("name", key.Provider), slog.String("version", key.Version), slog.String("os", key.OS), slog.String("arch", key.Arch))
 	defer r.Body.Close()
 	buffer := bytes.Buffer{}
-	panic("implement me")
 	readLength, err := io.Copy(&buffer, r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -80,6 +92,41 @@ func (repo *Repo) HandleProviderUpload(parsed *parsedRequest, w http.ResponseWri
 			return
 		}
 	}
+
+	etag := r.Header.Get("ETag")
+	if etag == "" {
+		hmac := md5.New()
+		hmac.Write(buffer.Bytes())
+		etag = hex.EncodeToString(hmac.Sum(nil))
+	}
+
+	target := path.Join(parsed.Namespace, parsed.Provider, parsed.Version, parsed.OS, parsed.Arch, "executable")
+	info := store.Info{
+		Size:      int64(readLength),
+		Mode:      0644,
+		EntityTag: etag,
+	}
+
+	wFile, err := repo.local.Create(target, info.FileInfo())
+	if err != nil {
+		parsed.Logger.Error("failed to create file", slog.String("error", err.Error()))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	_, err = wFile.Write(buffer.Bytes())
+	if err != nil {
+		wFile.Close()
+		parsed.Logger.Error("failed to write file", slog.String("error", err.Error()))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	err = wFile.Close()
+	if err != nil {
+		parsed.Logger.Error("failed to finish writing file", slog.String("error", err.Error()))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
