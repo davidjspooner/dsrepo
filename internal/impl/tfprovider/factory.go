@@ -19,7 +19,7 @@ func init() {
 	repository.RegisterFactory("tfprovider", &Factory{})
 }
 
-func (f *Factory) lookupRepo(w http.ResponseWriter, parsed *parsedRequest, operation string) *Repo {
+func (f *Factory) lookupRepo(w http.ResponseWriter, parsed *parsedRequest) *Repo {
 	path := parsed.Namespace + "/" + parsed.Provider
 	leaves := f.repos.FindLeaves([]byte(path))
 	if len(leaves) == 0 {
@@ -28,16 +28,11 @@ func (f *Factory) lookupRepo(w http.ResponseWriter, parsed *parsedRequest, opera
 		return nil
 	}
 	repo := leaves[0].Payload
-	if !repo.CheckAccess(parsed, operation) {
-		parsed.Logger.Error("access denied", slog.String("operation", operation), slog.String("namespace", parsed.Namespace), slog.String("name", parsed.Provider))
-		w.WriteHeader(http.StatusForbidden)
-		return nil
-	}
 	return repo
 }
 
 func (f *Factory) ConfigureRepo(ctx context.Context, config *repository.Config, mux mux.Mux) error {
-	if f.repos.Empty() {
+	if f.repos.IsEmpty() {
 
 		mux.HandleFunc("GET /.well-known/terraform.json", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
@@ -45,7 +40,7 @@ func (f *Factory) ConfigureRepo(ctx context.Context, config *repository.Config, 
 		})
 		mux.HandleFunc("GET /tf/providers/v1/{namespace}/{provider}/versions", func(w http.ResponseWriter, r *http.Request) {
 			parsed := NewParsedRequest(r)
-			repo := f.lookupRepo(w, parsed, "tfprovider:pull")
+			repo := f.lookupRepo(w, parsed)
 			if repo == nil {
 				return
 			}
@@ -55,25 +50,25 @@ func (f *Factory) ConfigureRepo(ctx context.Context, config *repository.Config, 
 
 		mux.HandleFunc("GET /tf/providers/v1/{namespace}/{provider}/{version}/download/{os}/{arch}", func(w http.ResponseWriter, r *http.Request) {
 			parsed := NewParsedRequest(r)
-			repo := f.lookupRepo(w, parsed, "tfprovider:pull")
+			repo := f.lookupRepo(w, parsed)
 			if repo == nil {
 				return
 			}
 			parsed.ParseVersionOSArch(r)
 			repo.HandleProviderDownload(parsed, w, r)
 		})
-		mux.HandleFunc("PUT /tf/providers/v1/{namespace}/{provider}/{version}/upload/{os}/{arch}", func(w http.ResponseWriter, r *http.Request) {
+		mux.HandleFunc("PUT /tf/providers/v1/{namespace}/{provider}/{version}/download/{os}/{arch}", func(w http.ResponseWriter, r *http.Request) {
 			parsed := NewParsedRequest(r)
-			repo := f.lookupRepo(w, parsed, "tfprovider:push")
+			repo := f.lookupRepo(w, parsed)
 			if repo == nil {
 				return
 			}
 			parsed.ParseVersionOSArch(r)
 			repo.HandleProviderUpload(parsed, w, r)
 		})
-		mux.HandleFunc("DELETE /tf/providers/v1/{namespace}/{provider}/{version}/upload/{os}/{arch}", func(w http.ResponseWriter, r *http.Request) {
+		mux.HandleFunc("DELETE /tf/providers/v1/{namespace}/{provider}/{version}/download/{os}/{arch}", func(w http.ResponseWriter, r *http.Request) {
 			parsed := NewParsedRequest(r)
-			repo := f.lookupRepo(w, parsed, "tfprovider:push")
+			repo := f.lookupRepo(w, parsed)
 			if repo == nil {
 				return
 			}

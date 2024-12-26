@@ -1,4 +1,4 @@
-package tfprovider
+package binaries
 
 import (
 	"bytes"
@@ -15,13 +15,13 @@ import (
 	"github.com/davidjspooner/dsrepo/internal/repository"
 )
 
-type Repo struct {
+type repo struct {
 	local store.Interface
 	order int
 }
 
-func newRepo(ctx context.Context, config *repository.Config) (*Repo, error) {
-	repo := &Repo{}
+func newRepo(ctx context.Context, config *repository.Config) (*repo, error) {
+	repo := &repo{}
 	var err error
 	repo.local, err = store.Mount(ctx, config.Local.Path, config.Local.Arguments)
 	if err != nil {
@@ -31,59 +31,52 @@ func newRepo(ctx context.Context, config *repository.Config) (*Repo, error) {
 	return repo, nil
 }
 
-func (repo *Repo) IsAllowed(parsed *parsedRequest, w http.ResponseWriter, r *http.Request, operation string) bool {
-	//TODO: check permissions
+func (repo *repo) IsAllowed(parsed *parsedRequest, w http.ResponseWriter, r *http.Request, operation string) bool {
 	return true
 }
 
-func (repo *Repo) HandleProviderVersions(parsed *parsedRequest, w http.ResponseWriter, r *http.Request) {
+func (repo *repo) List(parsed *parsedRequest, w http.ResponseWriter, r *http.Request) {
 	if !repo.IsAllowed(parsed, w, r, "list") {
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(`{
-	  "versions": [
-		{
-		  "version": "0.2.0",
-		  "protocols": ["4.0", "5.1"],
-		  "platforms": [
-			{"os": "darwin", "arch": "amd64"},
-			{"os": "linux", "arch": "amd64"},
-			{"os": "linux", "arch": "arm"},
-			{"os": "windows", "arch": "amd64"}
-		  ]
-		},
-		{
-		  "version": "0.2.1",
-		  "protocols": ["6.0"],
-		  "platforms": [
-			{"os": "darwin", "arch": "amd64"},
-			{"os": "linux", "arch": "amd64"},
-			{"os": "linux", "arch": "arm"},
-			{"os": "windows", "arch": "amd64"}
-		  ]
-		}
-	  ]
-	}`))
+
+	w.WriteHeader(http.StatusNotImplemented)
 }
 
-func (repo *Repo) HandleProviderDownload(parsed *parsedRequest, w http.ResponseWriter, r *http.Request) {
+func (repo *repo) Download(parsed *parsedRequest, w http.ResponseWriter, r *http.Request) {
 	if !repo.IsAllowed(parsed, w, r, "get") {
 		return
 	}
 
-	target := path.Join(parsed.Namespace, parsed.Provider, parsed.Version, parsed.OS, parsed.Arch, "executable")
+	target := path.Join(parsed.namespace, parsed.filename)
 	rFile, err := repo.local.Open(target)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 	defer rFile.Close()
+	stat, err := rFile.Stat()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Disposition", "attachment; filename="+parsed.filename)
+	w.Header().Set("Content-Length", strconv.FormatInt(stat.Size(), 10))
+	w.Header().Set("Modified", stat.ModTime().UTC().Format(http.TimeFormat))
+
+	etagged, ok := stat.(store.EntityTagged)
+	if ok {
+		etag, err := etagged.EntityTag()
+		if err != nil {
+			w.Header().Set("ETag", etag)
+		}
+	}
+
 	w.WriteHeader(http.StatusOK)
 	io.Copy(w, rFile)
 }
 
-func (repo *Repo) HandleProviderUpload(parsed *parsedRequest, w http.ResponseWriter, r *http.Request) {
+func (repo *repo) Upload(parsed *parsedRequest, w http.ResponseWriter, r *http.Request) {
 	if !repo.IsAllowed(parsed, w, r, "put") {
 		return
 	}
@@ -110,7 +103,7 @@ func (repo *Repo) HandleProviderUpload(parsed *parsedRequest, w http.ResponseWri
 		etag = hex.EncodeToString(hmac.Sum(nil))
 	}
 
-	target := path.Join(parsed.Namespace, parsed.Provider, parsed.Version, parsed.OS, parsed.Arch, "executable")
+	target := path.Join(parsed.namespace, parsed.filename)
 	info := store.Info{
 		Size:      int64(readLength),
 		Mode:      0644,
@@ -119,20 +112,20 @@ func (repo *Repo) HandleProviderUpload(parsed *parsedRequest, w http.ResponseWri
 
 	wFile, err := repo.local.Create(target, info.FileInfo())
 	if err != nil {
-		parsed.Logger.Error("failed to create file", slog.String("error", err.Error()))
+		parsed.logger.Error("failed to create file", slog.String("error", err.Error()))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	_, err = wFile.Write(buffer.Bytes())
 	if err != nil {
 		wFile.Close()
-		parsed.Logger.Error("failed to write file", slog.String("error", err.Error()))
+		parsed.logger.Error("failed to start writing file", slog.String("error", err.Error()))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	err = wFile.Close()
 	if err != nil {
-		parsed.Logger.Error("failed to finish writing file", slog.String("error", err.Error()))
+		parsed.logger.Error("failed to finish writing file", slog.String("error", err.Error()))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -140,9 +133,9 @@ func (repo *Repo) HandleProviderUpload(parsed *parsedRequest, w http.ResponseWri
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (repo *Repo) HandleProviderDelete(parsed *parsedRequest, w http.ResponseWriter, r *http.Request) {
+func (repo *repo) Delete(parsed *parsedRequest, w http.ResponseWriter, r *http.Request) {
 	if !repo.IsAllowed(parsed, w, r, "delete") {
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	w.WriteHeader(http.StatusNotImplemented)
 }
