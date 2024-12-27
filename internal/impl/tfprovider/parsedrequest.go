@@ -8,29 +8,29 @@ import (
 )
 
 type parsedRequest struct {
-	Namespace string
-	Provider  string
-	Version   string
-	OS        string
-	Arch      string
+	namespace    string
+	providerName string
+	version      string
+	os           string
+	arch         string
 
-	Logger slog.Logger
+	logger slog.Logger
 }
 
 func NewParsedRequest(r *http.Request) *parsedRequest {
 	pr := &parsedRequest{
-		Namespace: r.PathValue("namespace"),
-		Provider:  r.PathValue("provider"),
+		namespace:    r.PathValue("namespace"),
+		providerName: r.PathValue("provider"),
 	}
 	obs, _ := httphandler.GetObservation(r)
 	if obs != nil {
-		pr.Logger = obs.Logger
+		pr.logger = obs.Logger
 	}
 	return pr
 }
 
 func (pr *parsedRequest) ParseVersionOSArch(r *http.Request) {
-	pr.Version = r.PathValue("version")
-	pr.OS = r.PathValue("os")
-	pr.Arch = r.PathValue("arch")
+	pr.version = r.PathValue("version")
+	pr.os = r.PathValue("os")
+	pr.arch = r.PathValue("arch")
 }

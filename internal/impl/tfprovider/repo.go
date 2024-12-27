@@ -1,29 +1,22 @@
 package tfprovider
 
 import (
-	"bytes"
 	"context"
-	"crypto/md5"
-	"encoding/hex"
-	"io"
-	"log/slog"
 	"net/http"
 	"path"
-	"strconv"
 
-	"github.com/davidjspooner/dsfile/pkg/store"
 	"github.com/davidjspooner/dsrepo/internal/repository"
 )
 
-type Repo struct {
-	local store.Interface
-	order int
+type repo struct {
+	handler *repository.Handler
+	order   int
 }
 
-func newRepo(ctx context.Context, config *repository.Config) (*Repo, error) {
-	repo := &Repo{}
+func newRepo(ctx context.Context, config *repository.Config) (*repo, error) {
+	repo := &repo{}
 	var err error
-	repo.local, err = store.Mount(ctx, config.Local.Path, config.Local.Arguments)
+	repo.handler, err = repository.NewHandler(ctx, config)
 	if err != nil {
 		return nil, err
 	}
@@ -31,12 +24,12 @@ func newRepo(ctx context.Context, config *repository.Config) (*Repo, error) {
 	return repo, nil
 }
 
-func (repo *Repo) IsAllowed(parsed *parsedRequest, w http.ResponseWriter, r *http.Request, operation string) bool {
+func (repo *repo) IsAllowed(parsed *parsedRequest, w http.ResponseWriter, r *http.Request, operation string) bool {
 	//TODO: check permissions
 	return true
 }
 
-func (repo *Repo) HandleProviderVersions(parsed *parsedRequest, w http.ResponseWriter, r *http.Request) {
+func (repo *repo) HandleProviderVersions(parsed *parsedRequest, w http.ResponseWriter, r *http.Request) {
 	if !repo.IsAllowed(parsed, w, r, "list") {
 		return
 	}
@@ -67,82 +60,34 @@ func (repo *Repo) HandleProviderVersions(parsed *parsedRequest, w http.ResponseW
 	}`))
 }
 
-func (repo *Repo) HandleProviderDownload(parsed *parsedRequest, w http.ResponseWriter, r *http.Request) {
+func (repo *repo) List(parsed *parsedRequest, w http.ResponseWriter, r *http.Request) {
+	if !repo.IsAllowed(parsed, w, r, "list") {
+		return
+	}
+
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+func (repo *repo) Download(parsed *parsedRequest, w http.ResponseWriter, r *http.Request) {
 	if !repo.IsAllowed(parsed, w, r, "get") {
 		return
 	}
-
-	target := path.Join(parsed.Namespace, parsed.Provider, parsed.Version, parsed.OS, parsed.Arch, "executable")
-	rFile, err := repo.local.Open(target)
-	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	defer rFile.Close()
-	w.WriteHeader(http.StatusOK)
-	io.Copy(w, rFile)
+	target := path.Join(parsed.namespace, parsed.providerName)
+	repo.handler.HandleGet(target, parsed.logger, w, r)
 }
 
-func (repo *Repo) HandleProviderUpload(parsed *parsedRequest, w http.ResponseWriter, r *http.Request) {
+func (repo *repo) Upload(parsed *parsedRequest, w http.ResponseWriter, r *http.Request) {
 	if !repo.IsAllowed(parsed, w, r, "put") {
 		return
 	}
-	//obs.Logger.Info("provider-upload", slog.String("namespace", key.Namespace), slog.String("name", key.Provider), slog.String("version", key.Version), slog.String("os", key.OS), slog.String("arch", key.Arch))
-	defer r.Body.Close()
-	buffer := bytes.Buffer{}
-	readLength, err := io.Copy(&buffer, r.Body)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	contentLength := r.Header.Get("Content-Length")
-	if contentLength != "" {
-		if claimedLength, _ := strconv.Atoi(contentLength); readLength != -1 && int64(claimedLength) != readLength {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-	}
-
-	etag := r.Header.Get("ETag")
-	if etag == "" {
-		hmac := md5.New()
-		hmac.Write(buffer.Bytes())
-		etag = hex.EncodeToString(hmac.Sum(nil))
-	}
-
-	target := path.Join(parsed.Namespace, parsed.Provider, parsed.Version, parsed.OS, parsed.Arch, "executable")
-	info := store.Info{
-		Size:      int64(readLength),
-		Mode:      0644,
-		EntityTag: etag,
-	}
-
-	wFile, err := repo.local.Create(target, info.FileInfo())
-	if err != nil {
-		parsed.Logger.Error("failed to create file", slog.String("error", err.Error()))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	_, err = wFile.Write(buffer.Bytes())
-	if err != nil {
-		wFile.Close()
-		parsed.Logger.Error("failed to write file", slog.String("error", err.Error()))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	err = wFile.Close()
-	if err != nil {
-		parsed.Logger.Error("failed to finish writing file", slog.String("error", err.Error()))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusNoContent)
+	target := path.Join(parsed.namespace, parsed.providerName)
+	repo.handler.HandlePut(target, parsed.logger, w, r)
 }
 
-func (repo *Repo) HandleProviderDelete(parsed *parsedRequest, w http.ResponseWriter, r *http.Request) {
+func (repo *repo) Delete(parsed *parsedRequest, w http.ResponseWriter, r *http.Request) {
 	if !repo.IsAllowed(parsed, w, r, "delete") {
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	target := path.Join(parsed.namespace, parsed.providerName)
+	repo.handler.HandleDelete(target, parsed.logger, w, r)
 }

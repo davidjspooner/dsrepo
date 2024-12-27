@@ -11,7 +11,7 @@ import (
 )
 
 type Factory struct {
-	repos matcher.Tree[*Repo]
+	repos matcher.Tree[*repo]
 	count int
 }
 
@@ -19,11 +19,11 @@ func init() {
 	repository.RegisterFactory("tfprovider", &Factory{})
 }
 
-func (f *Factory) lookupRepo(w http.ResponseWriter, parsed *parsedRequest) *Repo {
-	path := parsed.Namespace + "/" + parsed.Provider
+func (f *Factory) lookupRepo(w http.ResponseWriter, parsed *parsedRequest) *repo {
+	path := parsed.namespace + "/" + parsed.providerName
 	leaves := f.repos.FindLeaves([]byte(path))
 	if len(leaves) == 0 {
-		parsed.Logger.Error("repo not found", slog.String("namespace", parsed.Namespace), slog.String("name", parsed.Provider))
+		parsed.logger.Error("repo not found", slog.String("namespace", parsed.namespace), slog.String("name", parsed.providerName))
 		w.WriteHeader(http.StatusNotFound)
 		return nil
 	}
@@ -55,7 +55,7 @@ func (f *Factory) ConfigureRepo(ctx context.Context, config *repository.Config, 
 				return
 			}
 			parsed.ParseVersionOSArch(r)
-			repo.HandleProviderDownload(parsed, w, r)
+			repo.Download(parsed, w, r)
 		})
 		mux.HandleFunc("PUT /tf/providers/v1/{namespace}/{provider}/{version}/download/{os}/{arch}", func(w http.ResponseWriter, r *http.Request) {
 			parsed := NewParsedRequest(r)
@@ -64,7 +64,7 @@ func (f *Factory) ConfigureRepo(ctx context.Context, config *repository.Config, 
 				return
 			}
 			parsed.ParseVersionOSArch(r)
-			repo.HandleProviderUpload(parsed, w, r)
+			repo.Upload(parsed, w, r)
 		})
 		mux.HandleFunc("DELETE /tf/providers/v1/{namespace}/{provider}/{version}/download/{os}/{arch}", func(w http.ResponseWriter, r *http.Request) {
 			parsed := NewParsedRequest(r)
@@ -73,7 +73,7 @@ func (f *Factory) ConfigureRepo(ctx context.Context, config *repository.Config, 
 				return
 			}
 			parsed.ParseVersionOSArch(r)
-			repo.HandleProviderDelete(parsed, w, r)
+			repo.Delete(parsed, w, r)
 		})
 	}
 
