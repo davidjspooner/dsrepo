@@ -3,7 +3,7 @@ package container
 import "net/http"
 
 type v2ManifestHandler struct {
-	factory *Factory
+	router *Router
 }
 
 func (handler *v2ManifestHandler) get(w http.ResponseWriter, req *http.Request) {

@@ -9,21 +9,31 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-type Factory interface {
-	ConfigureRepo(ctx context.Context, config *Config, mux mux.Mux) error
+type Router interface {
+	NewRepo(ctx context.Context, config *Config) error
+	SetupRoutes(mux mux.Mux) error
 }
 
-var factories = make(map[string]Factory)
+var routers = make(map[string]Router)
 
-func RegisterFactory(rType string, factory Factory) {
-	factories[rType] = factory
+func RegisterRouter(rType string, router Router) {
+	routers[rType] = router
 }
 
-func ConfigureRepo(ctx context.Context, config *Config, mux mux.Mux) error {
-	factory, ok := factories[config.Type]
+func SetupRoutes(mux mux.Mux) error {
+	for _, router := range routers {
+		if err := router.SetupRoutes(mux); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func NewRepo(ctx context.Context, config *Config) error {
+	router, ok := routers[config.Type]
 	if !ok {
-		types := maps.Keys(factories)
+		types := maps.Keys(routers)
 		return fmt.Errorf("unknown tree type: %s is not one of %s", config.Type, strings.Join(types, ", "))
 	}
-	return factory.ConfigureRepo(ctx, config, mux)
+	return router.NewRepo(ctx, config)
 }

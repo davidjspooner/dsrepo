@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/davidjspooner/dshttp/pkg/httphandler"
@@ -84,13 +83,17 @@ func (server *Server) initServers() error {
 		w.WriteHeader(http.StatusOK)
 	}))
 	for _, repoConfig := range server.config.Repositories {
-		err := repository.ConfigureRepo(server.ctx, repoConfig, server.mux)
+		err := repository.NewRepo(server.ctx, repoConfig)
 		if err != nil {
 			return err
 		}
 	}
+	err := repository.SetupRoutes(server.mux)
+	if err != nil {
+		return err
+	}
 	//dump the mux tree to the log
-	server.mux.WriteDebug(os.Stdout, 0)
+	//server.mux.WriteDebug(os.Stdout, 0)
 
 	return nil
 }

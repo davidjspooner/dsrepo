@@ -3,7 +3,7 @@ package container
 import "net/http"
 
 type v2BlobHandler struct {
-	factory *Factory
+	router *Router
 }
 
 func (handler *v2BlobHandler) get(w http.ResponseWriter, req *http.Request) {
