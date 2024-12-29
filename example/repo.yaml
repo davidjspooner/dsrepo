@@ -32,7 +32,7 @@ repositories:
     items:
       - "davidjspooner/*"
   - name: local-tf
-    type: tfprovider
+    type: tfregistry
     local: 
       path: s3://homelab-atom-repo/my_tfproviders/
       args:

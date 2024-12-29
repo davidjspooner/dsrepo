@@ -1,4 +1,4 @@
-package tfprovider
+package tfregistry
 
 import (
 	"context"
@@ -72,7 +72,7 @@ func (repo *repo) Download(parsed *parsedRequest, w http.ResponseWriter, r *http
 	if !repo.IsAllowed(parsed, w, r, "get") {
 		return
 	}
-	target := path.Join(parsed.namespace, parsed.providerName)
+	target := path.Join(parsed.namespace, parsed.providerName, parsed.version, parsed.os, parsed.arch+".json")
 	repo.handler.HandleGet(target, parsed.logger, w, r)
 }
 
@@ -80,7 +80,7 @@ func (repo *repo) Upload(parsed *parsedRequest, w http.ResponseWriter, r *http.R
 	if !repo.IsAllowed(parsed, w, r, "put") {
 		return
 	}
-	target := path.Join(parsed.namespace, parsed.providerName)
+	target := path.Join(parsed.namespace, parsed.providerName, parsed.version, parsed.os, parsed.arch+".json")
 	repo.handler.HandlePut(target, parsed.logger, w, r)
 }
 
@@ -88,6 +88,6 @@ func (repo *repo) Delete(parsed *parsedRequest, w http.ResponseWriter, r *http.R
 	if !repo.IsAllowed(parsed, w, r, "delete") {
 		return
 	}
-	target := path.Join(parsed.namespace, parsed.providerName)
+	target := path.Join(parsed.namespace, parsed.providerName, parsed.version, parsed.os, parsed.arch+".json")
 	repo.handler.HandleDelete(target, parsed.logger, w, r)
 }

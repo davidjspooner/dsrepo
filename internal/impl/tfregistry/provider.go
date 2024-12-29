@@ -1,4 +1,4 @@
-package tfprovider
+package tfregistry
 
 type Platform struct {
 	OS   string

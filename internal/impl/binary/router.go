@@ -1,4 +1,4 @@
-package binaries
+package binary
 
 import (
 	"context"
@@ -25,7 +25,7 @@ type parsedRequest struct {
 }
 
 func init() {
-	repository.RegisterRouter("directory", &Router{})
+	repository.RegisterRouter("binary", &Router{})
 }
 
 func (router *Router) GetRepo(filename string) []matcher.Leaf[*repo] {

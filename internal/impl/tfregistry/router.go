@@ -1,4 +1,4 @@
-package tfprovider
+package tfregistry
 
 import (
 	"context"
@@ -16,7 +16,7 @@ type Router struct {
 }
 
 func init() {
-	repository.RegisterRouter("tfprovider", &Router{})
+	repository.RegisterRouter("tfregistry", &Router{})
 }
 
 func (router *Router) lookupRepo(w http.ResponseWriter, parsed *parsedRequest) *repo {

@@ -1,4 +1,4 @@
-package tfprovider
+package tfregistry
 
 import (
 	"log/slog"

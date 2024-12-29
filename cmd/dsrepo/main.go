@@ -8,8 +8,9 @@ import (
 	"github.com/davidjspooner/dshttp/pkg/logevent"
 	"github.com/davidjspooner/dsrepo/internal/forest"
 
+	_ "github.com/davidjspooner/dsrepo/internal/impl/binary"
 	_ "github.com/davidjspooner/dsrepo/internal/impl/container"
-	_ "github.com/davidjspooner/dsrepo/internal/impl/tfprovider"
+	_ "github.com/davidjspooner/dsrepo/internal/impl/tfregistry"
 
 	_ "github.com/davidjspooner/dsfile/pkg/impl/localfs"
 	_ "github.com/davidjspooner/dsfile/pkg/impl/s3fs"
