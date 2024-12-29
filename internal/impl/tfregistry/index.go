@@ -1,16 +1,16 @@
 package tfregistry
 
 type Platform struct {
-	OS   string
-	Arch string
+	OS   string `json:"os"`
+	Arch string `json:"arch"`
 }
 
 type Version struct {
-	Version   string
-	Protocols []string
-	Platforms []Platform
+	Version   string     `json:"version"`
+	Protocols []string   `json:"protocols"`
+	Platforms []Platform `json:"platforms"`
 }
 
 type Index struct {
-	Versions []*Version
+	Versions []*Version `json:"versions"`
 }

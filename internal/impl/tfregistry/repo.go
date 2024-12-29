@@ -2,6 +2,7 @@ package tfregistry
 
 import (
 	"context"
+	"encoding/json"
 	"io/fs"
 	"net/http"
 	"path"
@@ -72,6 +73,22 @@ func (repo *repo) HandleProviderVersions(parsed *parsedRequest, w http.ResponseW
 					version.Platforms = append(version.Platforms, Platform{OS: os, Arch: arch})
 					index.Versions = append(index.Versions, &version)
 					//todo read a json to get the protocols
+
+					f, err := repo.handler.Local.Open(path)
+					if err != nil {
+						return err
+					}
+					defer f.Close()
+					var data map[string]interface{}
+					err = json.NewDecoder(f).Decode(&data)
+					if err != nil {
+						return err
+					}
+					protocols := data["protocols"].([]any)
+					for _, protocol := range protocols {
+						version.Protocols = append(version.Protocols, protocol.(string))
+					}
+
 				}
 
 				return nil
@@ -86,30 +103,7 @@ func (repo *repo) HandleProviderVersions(parsed *parsedRequest, w http.ResponseW
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(`{
-	  "versions": [
-		{
-		  "version": "0.2.0",
-		  "protocols": ["4.0", "5.1"],
-		  "platforms": [
-			{"os": "darwin", "arch": "amd64"},
-			{"os": "linux", "arch": "amd64"},
-			{"os": "linux", "arch": "arm"},
-			{"os": "windows", "arch": "amd64"}
-		  ]
-		},
-		{
-		  "version": "0.2.1",
-		  "protocols": ["6.0"],
-		  "platforms": [
-			{"os": "darwin", "arch": "amd64"},
-			{"os": "linux", "arch": "amd64"},
-			{"os": "linux", "arch": "arm"},
-			{"os": "windows", "arch": "amd64"}
-		  ]
-		}
-	  ]
-	}`))
+	json.NewEncoder(w).Encode(index)
 }
 
 func (repo *repo) Download(parsed *parsedRequest, w http.ResponseWriter, r *http.Request) {
