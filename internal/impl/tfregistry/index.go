@@ -11,9 +11,6 @@ type Version struct {
 	Platforms []Platform
 }
 
-type Provider struct {
-	Namespace string
-	Provider  string
-	Versions  []Version
+type Index struct {
+	Versions []*Version
 }
-

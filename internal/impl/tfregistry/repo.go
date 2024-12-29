@@ -2,8 +2,11 @@ package tfregistry
 
 import (
 	"context"
+	"io/fs"
 	"net/http"
 	"path"
+	"slices"
+	"strings"
 
 	"github.com/davidjspooner/dsrepo/internal/repository"
 )
@@ -29,10 +32,59 @@ func (repo *repo) IsAllowed(parsed *parsedRequest, w http.ResponseWriter, r *htt
 	return true
 }
 
+var allowedArchs = []string{"amd64", "arm", "arm64", "386", "ppc64le", "s390x", "mips64", "mips64le", "riscv64"}
+var allowedOSs = []string{"darwin", "linux", "windows", "freebsd", "openbsd", "netbsd", "solaris", "dragonfly", "plan9", "aix", "zos"}
+
 func (repo *repo) HandleProviderVersions(parsed *parsedRequest, w http.ResponseWriter, r *http.Request) {
 	if !repo.IsAllowed(parsed, w, r, "list") {
 		return
 	}
+
+	//read the filesystem to get the versions, os and archs
+
+	index := Index{}
+
+	target := path.Join(parsed.namespace, parsed.providerName) + "/"
+	err := fs.WalkDir(repo.handler.Local, target, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() && strings.HasSuffix(path, ".json") {
+			parts := strings.Split(path, "/")
+			arch := parts[len(parts)-1]
+			arch = strings.TrimSuffix(arch, ".json")
+			os := parts[len(parts)-2]
+			version := parts[len(parts)-3]
+			if slices.Contains(allowedArchs, arch) && slices.Contains(allowedOSs, os) {
+				_ = version
+
+				found := false
+				for _, v := range index.Versions {
+					if v.Version == version {
+						//add the os and arch to the version
+						found = true
+						v.Platforms = append(v.Platforms, Platform{OS: os, Arch: arch})
+					}
+				}
+				if !found {
+					//add the version
+					version := Version{Version: version}
+					version.Platforms = append(version.Platforms, Platform{OS: os, Arch: arch})
+					index.Versions = append(index.Versions, &version)
+					//todo read a json to get the protocols
+				}
+
+				return nil
+			}
+			return nil
+		}
+		return nil
+	})
+	if err != nil {
+		http.Error(w, "could not walk", http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(`{
 	  "versions": [
@@ -58,14 +110,6 @@ func (repo *repo) HandleProviderVersions(parsed *parsedRequest, w http.ResponseW
 		}
 	  ]
 	}`))
-}
-
-func (repo *repo) List(parsed *parsedRequest, w http.ResponseWriter, r *http.Request) {
-	if !repo.IsAllowed(parsed, w, r, "list") {
-		return
-	}
-
-	w.WriteHeader(http.StatusNotImplemented)
 }
 
 func (repo *repo) Download(parsed *parsedRequest, w http.ResponseWriter, r *http.Request) {
