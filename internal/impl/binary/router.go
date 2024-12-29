@@ -73,6 +73,9 @@ func (router *Router) ParseRequest(w http.ResponseWriter, r *http.Request) *pars
 }
 
 func (router *Router) SetupRoutes(mux mux.Mux) error {
+	if router.repos.IsEmpty() {
+		return nil
+	}
 	mux.HandleFunc("GET /binary/{filename...}", func(w http.ResponseWriter, r *http.Request) {
 		parsed := router.ParseRequest(w, r)
 		if parsed == nil {

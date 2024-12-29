@@ -1,0 +1,22 @@
+
+# roles:
+#   - name: guest
+#     policies:
+#       - pull-any
+#   - name: admin-davidjspooner
+#     policies:
+#       - pull-any
+#       - push-davidjspooner
+# 
+# policies:
+#   - name: pull-any
+#     actions:
+#       - *:get|list
+#     resources:
+#       - *:**
+#       
+#   - name: push-davidjspooner
+#     actions:
+#       - *:put|delete
+#     resources:
+#       - "*:davidjspooner/**"

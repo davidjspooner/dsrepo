@@ -2,17 +2,26 @@ package container
 
 import (
 	"context"
+	"log/slog"
+	"net/http"
 
+	"github.com/davidjspooner/dshttp/pkg/httphandler"
 	"github.com/davidjspooner/dshttp/pkg/mux"
+	"github.com/davidjspooner/dsmatch/pkg/matcher"
 	"github.com/davidjspooner/dsrepo/internal/repository"
 )
 
 type Router struct {
-	v2BlobHandler     *v2BlobHandler
-	v2CatalogHandler  *v2CatalogHandler
-	v2ManifestHandler *v2ManifestHandler
-	v2TagHandler      *v2TagHandler
-	v2RootHandler     *v2RootHandler
+	repos matcher.Tree[*repo]
+	count int
+}
+
+type parsedRequest struct {
+	name      string
+	digest    string
+	reference string
+	repo      *repo
+	logger    slog.Logger
 }
 
 func init() {
@@ -35,31 +44,123 @@ DELETE /v2/<name>/manifests/<reference>
 GET /v2/<name>/tags/list
 */
 
-func (router *Router) NewRepo(ctc context.Context, config *repository.Config) error {
-	if router.v2BlobHandler == nil {
-		router.v2BlobHandler = &v2BlobHandler{router: router}
-		router.v2CatalogHandler = &v2CatalogHandler{router: router}
-		router.v2ManifestHandler = &v2ManifestHandler{router: router}
-		router.v2TagHandler = &v2TagHandler{router: router}
-		router.v2RootHandler = &v2RootHandler{router: router}
+func (router *Router) NewRepo(ctx context.Context, config *repository.Config) error {
+	repo, err := newRepo(ctx, config)
+	if err != nil {
+		return err
 	}
+	router.count++
+	repo.order = router.count
+	for _, item := range config.Items {
+		seq, err := repository.NewGlob([]byte(item), '/')
+		if err != nil {
+			return err
+		}
+		leaf, err := router.repos.Add(seq)
+		if err != nil {
+			return err
+		}
+		leaf.Payload = repo
+	}
+
 	return nil
 }
 
-func (router *Router) SetupRoutes(mux mux.Mux) error {
-	if router.v2BlobHandler == nil {
+func (router *Router) ParseRequest(w http.ResponseWriter, r *http.Request) *parsedRequest {
+	parsed := &parsedRequest{}
+	parsed.name = r.PathValue("name")
+	parsed.digest = r.PathValue("digest")
+	parsed.reference = r.PathValue("reference")
+	leaves := router.repos.FindLeaves([]byte(parsed.name))
+	if len(leaves) == 0 {
+		w.WriteHeader(http.StatusNotFound)
 		return nil
 	}
-	mux.HandleFunc("GET /v2/{$}", router.v2RootHandler.get)
-	mux.HandleFunc("GET /v2/_catalog", router.v2CatalogHandler.get)
-	mux.HandleFunc("GET /v2/{name...}/blobs/{digest}", router.v2BlobHandler.get)
-	mux.HandleFunc("POST /v2/{name...}/blobs/uploads/{$}", router.v2BlobHandler.post)
-	mux.HandleFunc("PATCH /v2/{name...}/blobs/uploads/{reference}", router.v2BlobHandler.patch)
-	mux.HandleFunc("PUT /v2/{name...}/blobs/uploads/{reference}", router.v2BlobHandler.put)
-	mux.HandleFunc("DELETE /v2/{name...}/blobs/{$}", router.v2BlobHandler.delete)
-	mux.HandleFunc("GET /v2/{name...}/manifests/{reference}", router.v2ManifestHandler.get)
-	mux.HandleFunc("PUT /v2/{name...}/manifests/{reference}", router.v2ManifestHandler.put)
-	mux.HandleFunc("DELETE /v2/{name...}/manifests/{reference}", router.v2ManifestHandler.delete)
-	mux.HandleFunc("GET /v2/{name...}/tags/list", router.v2TagHandler.get)
+	if len(leaves) > 1 {
+		w.WriteHeader(http.StatusConflict)
+		w.Write([]byte("ambiguous request"))
+		return nil
+	}
+	parsed.repo = leaves[0].Payload
+	obs, _ := httphandler.GetObservation(r)
+	if obs != nil {
+		parsed.logger = obs.Logger
+	}
+	return parsed
+}
+
+func (router *Router) SetupRoutes(mux mux.Mux) error {
+	if router.repos.IsEmpty() {
+		return nil
+	}
+	mux.HandleFunc("GET /v2/{$}", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotImplemented)
+	})
+	mux.HandleFunc("GET /v2/_catalog", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotImplemented)
+	})
+	mux.HandleFunc("GET /v2/{name...}/blobs/{digest}", func(w http.ResponseWriter, r *http.Request) {
+		parsed := router.ParseRequest(w, r)
+		if parsed == nil {
+			return
+		}
+		parsed.repo.getBlobByDigest(parsed, w, r)
+	})
+	mux.HandleFunc("POST /v2/{name...}/blobs/uploads/{$}", func(w http.ResponseWriter, r *http.Request) {
+		parsed := router.ParseRequest(w, r)
+		if parsed == nil {
+			return
+		}
+		parsed.repo.uploadBlob(parsed, w, r)
+	})
+	mux.HandleFunc("PATCH /v2/{name...}/blobs/uploads/{reference}", func(w http.ResponseWriter, r *http.Request) {
+		parsed := router.ParseRequest(w, r)
+		if parsed == nil {
+			return
+		}
+		parsed.repo.updateBlob(parsed, w, r)
+	})
+	mux.HandleFunc("PUT /v2/{name...}/blobs/uploads/{reference}", func(w http.ResponseWriter, r *http.Request) {
+		parsed := router.ParseRequest(w, r)
+		if parsed == nil {
+			return
+		}
+		parsed.repo.updateBlob(parsed, w, r)
+	})
+	mux.HandleFunc("DELETE /v2/{name...}/blobs/{$}", func(w http.ResponseWriter, r *http.Request) {
+		parsed := router.ParseRequest(w, r)
+		if parsed == nil {
+			return
+		}
+		parsed.repo.deleteBlob(parsed, w, r)
+	})
+	mux.HandleFunc("GET /v2/{name...}/manifests/{reference}", func(w http.ResponseWriter, r *http.Request) {
+		parsed := router.ParseRequest(w, r)
+		if parsed == nil {
+			return
+		}
+		parsed.repo.getManifest(parsed, w, r)
+	})
+	mux.HandleFunc("PUT /v2/{name...}/manifests/{reference}", func(w http.ResponseWriter, r *http.Request) {
+		parsed := router.ParseRequest(w, r)
+		if parsed == nil {
+			return
+		}
+		parsed.repo.putManifest(parsed, w, r)
+	})
+	mux.HandleFunc("DELETE /v2/{name...}/manifests/{reference}", func(w http.ResponseWriter, r *http.Request) {
+		parsed := router.ParseRequest(w, r)
+		if parsed == nil {
+			return
+		}
+		parsed.repo.deleteManifest(parsed, w, r)
+	})
+	mux.HandleFunc("GET /v2/{name...}/tags/list", func(w http.ResponseWriter, r *http.Request) {
+		parsed := router.ParseRequest(w, r)
+		if parsed == nil {
+			return
+		}
+		parsed.repo.getTags(parsed, w, r)
+	})
 	return nil
 }
