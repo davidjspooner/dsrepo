@@ -62,4 +62,4 @@ release:
 
 dockers:
   - image_templates:
-      - davidsjpooner/dsrepo
+      - davidjspooner/dsrepo
