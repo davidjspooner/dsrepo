@@ -27,6 +27,10 @@ func NewHandler(ctx context.Context, config *Config) (*Handler, error) {
 		return nil, err
 	}
 
+	if config.Upstream.Url != "" {
+		
+	}
+
 	return handler, nil
 }
 

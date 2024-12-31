@@ -94,10 +94,11 @@ func (router *Router) SetupRoutes(mux mux.Mux) error {
 		return nil
 	}
 	mux.HandleFunc("GET /v2/{$}", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotImplemented)
+		w.Header().Set("Docker-Distribution-API-Version", "registry/2.0")
+		w.WriteHeader(http.StatusOK)
 	})
 	mux.HandleFunc("GET /v2/_catalog", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotImplemented)
+		w.WriteHeader(http.StatusMethodNotAllowed)
 	})
 	mux.HandleFunc("GET /v2/{name...}/blobs/{digest}", func(w http.ResponseWriter, r *http.Request) {
 		parsed := router.ParseRequest(w, r)
