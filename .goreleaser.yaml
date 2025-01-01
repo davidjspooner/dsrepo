@@ -63,3 +63,7 @@ release:
 dockers:
   - image_templates:
       - davidjspooner/dsrepo
+
+publishers:
+  - name: github
+    
