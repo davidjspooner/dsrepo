@@ -62,8 +62,7 @@ release:
 
 dockers:
   - image_templates:
-      - davidjspooner/dsrepo
+      - ghcr.io/davidjspooner/dsrepo
 
 publishers:
   - name: github
-    
