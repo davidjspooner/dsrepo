@@ -64,5 +64,3 @@ dockers:
   - image_templates:
       - ghcr.io/davidjspooner/dsrepo
 
-publishers:
-  - name: github
