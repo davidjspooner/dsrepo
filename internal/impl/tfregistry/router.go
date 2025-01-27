@@ -31,12 +31,12 @@ func (router *Router) lookupRepo(w http.ResponseWriter, parsed *parsedRequest) *
 	return repo
 }
 
-func (router *Router) SetupRoutes(mux mux.Mux) error {
-	mux.HandleFunc("GET /.well-known/terraform.json", func(w http.ResponseWriter, r *http.Request) {
+func (router *Router) SetupRoutes(aMux mux.Mux) error {
+	aMux.HandleFunc("GET /.well-known/terraform.json", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"providers.v1":"/tf/providers/v1/"}`))
+		w.Write([]byte(`{"providers.v1":"/tfregistry/providers/v1/"}`))
 	})
-	mux.HandleFunc("GET /tf/providers/v1/{namespace}/{provider}/versions", func(w http.ResponseWriter, r *http.Request) {
+	aMux.HandleFunc("GET /tfregistry/providers/v1/{namespace}/{provider}/versions", func(w http.ResponseWriter, r *http.Request) {
 		parsed := NewParsedRequest(r)
 		repo := router.lookupRepo(w, parsed)
 		if repo == nil {
@@ -46,7 +46,7 @@ func (router *Router) SetupRoutes(mux mux.Mux) error {
 		repo.HandleProviderVersions(parsed, w, r)
 	})
 
-	mux.HandleFunc("GET /tf/providers/v1/{namespace}/{provider}/{version}/download/{os}/{arch}", func(w http.ResponseWriter, r *http.Request) {
+	aMux.HandleFunc("GET /tfregistry/providers/v1/{namespace}/{provider}/{version}/download/{os}/{arch}", func(w http.ResponseWriter, r *http.Request) {
 		parsed := NewParsedRequest(r)
 		repo := router.lookupRepo(w, parsed)
 		if repo == nil {
@@ -55,7 +55,7 @@ func (router *Router) SetupRoutes(mux mux.Mux) error {
 		parsed.ParseVersionOSArch(r)
 		repo.Download(parsed, w, r)
 	})
-	mux.HandleFunc("PUT /tf/providers/v1/{namespace}/{provider}/{version}/download/{os}/{arch}", func(w http.ResponseWriter, r *http.Request) {
+	aMux.HandleFunc("PUT /tfregistry/providers/v1/{namespace}/{provider}/{version}/download/{os}/{arch}", func(w http.ResponseWriter, r *http.Request) {
 		parsed := NewParsedRequest(r)
 		repo := router.lookupRepo(w, parsed)
 		if repo == nil {
@@ -64,7 +64,7 @@ func (router *Router) SetupRoutes(mux mux.Mux) error {
 		parsed.ParseVersionOSArch(r)
 		repo.Upload(parsed, w, r)
 	})
-	mux.HandleFunc("DELETE /tf/providers/v1/{namespace}/{provider}/{version}/download/{os}/{arch}", func(w http.ResponseWriter, r *http.Request) {
+	aMux.HandleFunc("DELETE /tfregistry/providers/v1/{namespace}/{provider}/{version}/download/{os}/{arch}", func(w http.ResponseWriter, r *http.Request) {
 		parsed := NewParsedRequest(r)
 		repo := router.lookupRepo(w, parsed)
 		if repo == nil {

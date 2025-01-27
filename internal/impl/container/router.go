@@ -89,79 +89,85 @@ func (router *Router) ParseRequest(w http.ResponseWriter, r *http.Request) *pars
 	return parsed
 }
 
-func (router *Router) SetupRoutes(mux mux.Mux) error {
+func (router *Router) SetupRoutes(aMux mux.Mux) error {
 	if router.repos.IsEmpty() {
 		return nil
 	}
-	mux.HandleFunc("GET /v2/{$}", func(w http.ResponseWriter, r *http.Request) {
+	aMux.HandleFunc("GET /v2/{$}", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Docker-Distribution-API-Version", "registry/2.0")
 		w.WriteHeader(http.StatusOK)
 	})
-	mux.HandleFunc("GET /v2/_catalog", func(w http.ResponseWriter, r *http.Request) {
+	aMux.HandleFunc("GET /v2/_catalog", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	})
-	mux.HandleFunc("GET /v2/{name...}/blobs/{digest}", func(w http.ResponseWriter, r *http.Request) {
+	aMux.HandleFunc("GET /v2/{name...}/blobs/{digest}", func(w http.ResponseWriter, r *http.Request) {
 		parsed := router.ParseRequest(w, r)
 		if parsed == nil {
 			return
 		}
 		parsed.repo.getBlobByDigest(parsed, w, r)
 	})
-	mux.HandleFunc("POST /v2/{name...}/blobs/uploads/{$}", func(w http.ResponseWriter, r *http.Request) {
+	aMux.HandleFunc("POST /v2/{name...}/blobs/uploads/{$}", func(w http.ResponseWriter, r *http.Request) {
 		parsed := router.ParseRequest(w, r)
 		if parsed == nil {
 			return
 		}
 		parsed.repo.uploadBlob(parsed, w, r)
 	})
-	mux.HandleFunc("PATCH /v2/{name...}/blobs/uploads/{reference}", func(w http.ResponseWriter, r *http.Request) {
+	aMux.HandleFunc("PATCH /v2/{name...}/blobs/uploads/{reference}", func(w http.ResponseWriter, r *http.Request) {
 		parsed := router.ParseRequest(w, r)
 		if parsed == nil {
 			return
 		}
 		parsed.repo.updateBlob(parsed, w, r)
 	})
-	mux.HandleFunc("PUT /v2/{name...}/blobs/uploads/{reference}", func(w http.ResponseWriter, r *http.Request) {
+	aMux.HandleFunc("PUT /v2/{name...}/blobs/uploads/{reference}", func(w http.ResponseWriter, r *http.Request) {
 		parsed := router.ParseRequest(w, r)
 		if parsed == nil {
 			return
 		}
 		parsed.repo.updateBlob(parsed, w, r)
 	})
-	mux.HandleFunc("DELETE /v2/{name...}/blobs/{$}", func(w http.ResponseWriter, r *http.Request) {
+	aMux.HandleFunc("DELETE /v2/{name...}/blobs/{$}", func(w http.ResponseWriter, r *http.Request) {
 		parsed := router.ParseRequest(w, r)
 		if parsed == nil {
 			return
 		}
 		parsed.repo.deleteBlob(parsed, w, r)
 	})
-	mux.HandleFunc("GET /v2/{name...}/manifests/{reference}", func(w http.ResponseWriter, r *http.Request) {
+	aMux.HandleFunc("GET /v2/{name...}/manifests/{reference}", func(w http.ResponseWriter, r *http.Request) {
 		parsed := router.ParseRequest(w, r)
 		if parsed == nil {
 			return
 		}
 		parsed.repo.getManifest(parsed, w, r)
 	})
-	mux.HandleFunc("PUT /v2/{name...}/manifests/{reference}", func(w http.ResponseWriter, r *http.Request) {
+	aMux.HandleFunc("PUT /v2/{name...}/manifests/{reference}", func(w http.ResponseWriter, r *http.Request) {
 		parsed := router.ParseRequest(w, r)
 		if parsed == nil {
 			return
 		}
 		parsed.repo.putManifest(parsed, w, r)
 	})
-	mux.HandleFunc("DELETE /v2/{name...}/manifests/{reference}", func(w http.ResponseWriter, r *http.Request) {
+	aMux.HandleFunc("DELETE /v2/{name...}/manifests/{reference}", func(w http.ResponseWriter, r *http.Request) {
 		parsed := router.ParseRequest(w, r)
 		if parsed == nil {
 			return
 		}
 		parsed.repo.deleteManifest(parsed, w, r)
 	})
-	mux.HandleFunc("GET /v2/{name...}/tags/list", func(w http.ResponseWriter, r *http.Request) {
+	aMux.HandleFunc("GET /v2/{name...}/tags/list", func(w http.ResponseWriter, r *http.Request) {
 		parsed := router.ParseRequest(w, r)
 		if parsed == nil {
 			return
 		}
 		parsed.repo.getTags(parsed, w, r)
 	})
+
+	// sm, _ := aMux.(*mux.ServeMux)
+	// if sm != nil {
+	// 	sm.WriteDebug(os.Stdout, 0)
+	// }
+
 	return nil
 }

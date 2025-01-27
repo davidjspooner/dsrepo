@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"path"
 	"strconv"
 
@@ -16,7 +17,8 @@ import (
 )
 
 type Handler struct {
-	Local store.Interface
+	Local    store.Interface
+	Upstream *url.URL
 }
 
 func NewHandler(ctx context.Context, config *Config) (*Handler, error) {
@@ -28,7 +30,10 @@ func NewHandler(ctx context.Context, config *Config) (*Handler, error) {
 	}
 
 	if config.Upstream.Url != "" {
-		
+		handler.Upstream, err = url.Parse(config.Upstream.Url)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return handler, nil
