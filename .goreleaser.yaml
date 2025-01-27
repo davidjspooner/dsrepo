@@ -62,5 +62,6 @@ release:
 
 dockers:
   - image_templates:
-      - ghcr.io/davidjspooner/dsrepo
+      - ghcr.io/davidjspooner/dsrepo:latest
+      - "ghcr.io/davidjspooner/dsrepo:{{ .Tag }}"
 
