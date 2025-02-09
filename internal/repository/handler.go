@@ -39,7 +39,12 @@ func NewHandler(ctx context.Context, config *Config) (*Handler, error) {
 	return handler, nil
 }
 
-func (handler *Handler) HandleGet(target string, logger slog.Logger, w http.ResponseWriter, r *http.Request) error {
+func (handler *Handler) LocalFileExists(target string) bool {
+	stat, err := handler.Local.Stat(target)
+	return err == nil && !stat.IsDir()
+}
+
+func (handler *Handler) HandleLocalGet(target string, logger slog.Logger, w http.ResponseWriter, r *http.Request) error {
 	rFile, err := handler.Local.Open(target)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
@@ -73,7 +78,7 @@ func (handler *Handler) HandleGet(target string, logger slog.Logger, w http.Resp
 	return err
 }
 
-func (handler *Handler) HandlePut(target string, logger slog.Logger, w http.ResponseWriter, r *http.Request) error {
+func (handler *Handler) HandleLocalPut(target string, logger slog.Logger, w http.ResponseWriter, r *http.Request) error {
 	defer r.Body.Close()
 	buffer := bytes.Buffer{}
 	readLength, err := io.Copy(&buffer, r.Body)
@@ -129,7 +134,7 @@ func (handler *Handler) HandlePut(target string, logger slog.Logger, w http.Resp
 	return nil
 }
 
-func (handler *Handler) HandleDelete(target string, logger slog.Logger, w http.ResponseWriter, r *http.Request) error {
+func (handler *Handler) HandleLocalDelete(target string, logger slog.Logger, w http.ResponseWriter, r *http.Request) error {
 	w.WriteHeader(http.StatusNotImplemented)
 	err := fmt.Errorf("not implemented")
 	logger.Error("file:deletion", slog.String("target", target), slog.String("error", err.Error()))

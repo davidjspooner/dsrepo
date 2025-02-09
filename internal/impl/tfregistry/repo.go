@@ -111,7 +111,7 @@ func (repo *repo) Download(parsed *parsedRequest, w http.ResponseWriter, r *http
 		return
 	}
 	target := path.Join(parsed.namespace, parsed.providerName, parsed.version, parsed.os, parsed.arch+".json")
-	repo.handler.HandleGet(target, parsed.logger, w, r)
+	repo.handler.HandleLocalGet(target, parsed.logger, w, r)
 }
 
 func (repo *repo) Upload(parsed *parsedRequest, w http.ResponseWriter, r *http.Request) {
@@ -119,7 +119,7 @@ func (repo *repo) Upload(parsed *parsedRequest, w http.ResponseWriter, r *http.R
 		return
 	}
 	target := path.Join(parsed.namespace, parsed.providerName, parsed.version, parsed.os, parsed.arch+".json")
-	repo.handler.HandlePut(target, parsed.logger, w, r)
+	repo.handler.HandleLocalPut(target, parsed.logger, w, r)
 }
 
 func (repo *repo) Delete(parsed *parsedRequest, w http.ResponseWriter, r *http.Request) {
@@ -127,5 +127,5 @@ func (repo *repo) Delete(parsed *parsedRequest, w http.ResponseWriter, r *http.R
 		return
 	}
 	target := path.Join(parsed.namespace, parsed.providerName, parsed.version, parsed.os, parsed.arch+".json")
-	repo.handler.HandleDelete(target, parsed.logger, w, r)
+	repo.handler.HandleLocalDelete(target, parsed.logger, w, r)
 }

@@ -42,7 +42,7 @@ func (repo *repo) Download(parsed *parsedRequest, w http.ResponseWriter, r *http
 		return
 	}
 	target := path.Join(parsed.namespace, parsed.filename)
-	repo.handler.HandleGet(target, parsed.logger, w, r)
+	repo.handler.HandleLocalGet(target, parsed.logger, w, r)
 }
 
 func (repo *repo) Upload(parsed *parsedRequest, w http.ResponseWriter, r *http.Request) {
@@ -50,7 +50,7 @@ func (repo *repo) Upload(parsed *parsedRequest, w http.ResponseWriter, r *http.R
 		return
 	}
 	target := path.Join(parsed.namespace, parsed.filename)
-	err := repo.handler.HandlePut(target, parsed.logger, w, r)
+	err := repo.handler.HandleLocalPut(target, parsed.logger, w, r)
 	if err != nil {
 		parsed.logger.Error("failed to put file", slog.String("error", err.Error()))
 	}
@@ -61,7 +61,7 @@ func (repo *repo) Delete(parsed *parsedRequest, w http.ResponseWriter, r *http.R
 		return
 	}
 	target := path.Join(parsed.namespace, parsed.filename)
-	err := repo.handler.HandleDelete(target, parsed.logger, w, r)
+	err := repo.handler.HandleLocalDelete(target, parsed.logger, w, r)
 	if err != nil {
 		parsed.logger.Error("failed to delete file", slog.String("error", err.Error()))
 	}
